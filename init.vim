@@ -154,15 +154,18 @@ let mapleader = "\<Space>"
 " 更方便的进入命令模式
 nnoremap <leader>; :
 
-" 插入模式下快速移动光标
-inoremap <C-H> <Left>
-inoremap <C-J> <Down>
-inoremap <C-K> <Up>
-inoremap <C-L> <Right>
+" vscode 似乎不支持插入模式下的映射
+if !exists('g:vscode')
+    " 插入模式下快速移动光标
+    inoremap <C-H> <Left>
+    inoremap <C-J> <Down>
+    inoremap <C-K> <Up>
+    inoremap <C-L> <Right>
 
-" 插入二合字符
-" 默认是<C-K>,但已被上面的定义所占用
-inoremap <Insert> <C-K>
+    " 插入二合字符
+    " 默认是<C-K>,但已被上面的定义所占用
+    inoremap <Insert> <C-K>
+endif
 
 " 快速移动到行首行尾
 " 直接使用map命令从而全局不使用H,L的原功能
@@ -170,6 +173,22 @@ map H ^
 map L $
 " 可视模式下移动到行尾(不包含换行符)
 vnoremap L $h
+
+" 修复 wsl 或 windows 下系统剪切板不可用
+if has("wsl") || has("win32")
+    let g:clipboard = {
+                \   'name': 'WslClipboard',
+                \   'copy': {
+                \      '+': 'clip.exe',
+                \      '*': 'clip.exe',
+                \    },
+                \   'paste': {
+                \      '+': 'powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+                \      '*': 'powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+                \   },
+                \   'cache_enabled': 0,
+                \ }
+endif
 
 " 复制到系统剪切板
 noremap <leader>y "+y
@@ -186,10 +205,15 @@ noremap <leader>p "+p
 noremap <leader>P "+P
 
 " 保存
-nnoremap <leader>w :w<CR>
-nnoremap <leader>W :w !sudo tee % > /dev/null<CR>
-" :exit 类似于 :wq
-nnoremap <leader>e :exit<CR>
+if exists('g:vscode')
+    " 修复 vscode 中命令无效
+    nnoremap <leader>w :Write<CR>
+else
+    nnoremap <leader>w :w<CR>
+    nnoremap <leader>W :w !sudo tee % > /dev/null<CR>
+    " :exit 类似于 :wq
+    nnoremap <leader>e :exit<CR>
+endif
 
 " 保证搜索结果高亮,避免下面取消高亮后再次搜索没有高亮
 nnoremap n :set hlsearch<CR>n
@@ -229,37 +253,12 @@ nnoremap <leader>fc :cclose<cr>
 nnoremap <leader>fn :cnext<cr>
 nnoremap <leader>fp :cprevious<cr>
 
-" 删除当前buffer
-" 如果有多个buffer则自动编辑之前的buffer或前一个buffer
-" 如果只有当前一个buffer则删除后打开NERDTree(未启用, 如果需要取消下面 "NERDTreeFocus 的注释即可)
-nnoremap <leader>q :call CloseCurrentBuffer()<CR>
-
-function! CloseCurrentBuffer()
-    " 在处理buffer前先关闭预览，quickfix，位置列表这几个窗口，不然会有些问题
-    pclose
-    cclose
-    lclose
-
-    let l:bufsInfo = getbufinfo()
-    let l:bufsNrListed = []
-    for l:bufInfo in l:bufsInfo
-        if get(l:bufInfo, "listed") == 1
-            call add(l:bufsNrListed, get(l:bufInfo, "bufnr"))
-        endif
-    endfor
-    let l:bufsNrListedCount = len(l:bufsNrListed)
-    if l:bufsNrListedCount <= 1
-        execute "bw"
-        "NERDTreeFocus
-    else
-        if bufloaded(bufnr("#"))
-            execute "b#"
-        else
-            execute "bp"
-        endif
-        execute "bw #"
-    endif
-endfunction
+if exists('g:vscode')
+    " 修复 vscode 中命令无效
+    nnoremap <leader>q :Quit<CR>
+else
+    nnoremap <leader>q :q<CR>
+endif
 
 " 删除所有buffer
 nnoremap <leader>bc :call CloseListedBuffers()<cr>
